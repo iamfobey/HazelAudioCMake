@@ -29,7 +29,7 @@ Hazel::Audio::Init();
 // should be in 3D space or not
 auto source = Hazel::AudioSource::LoadFromFile(filename, true);
 // Play audio source
-Hazel::Audio::Play(source);
+source.Play();
 ```
 and you can set various attributes on a source as well:
 ```cpp
