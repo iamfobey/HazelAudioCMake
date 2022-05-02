@@ -9,8 +9,6 @@ This is the first version of the library that was written over a few hours, so t
 - 3D spatial playback of audio sources
 
 ## TODO
-- There are like a thousand compiler warnings, so definitely sort that out
-- Unload audio sources
 - Stream audio files
 - Audio source seeking
 - Listener positioning API
