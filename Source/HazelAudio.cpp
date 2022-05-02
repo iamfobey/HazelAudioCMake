@@ -168,6 +168,7 @@ namespace Hazel::Audio
 	Source::~Source()
 	{
 		alDeleteSources(1, &m_SourceHandle);
+		alDeleteBuffers(1, &m_BufferHandle);
 	}
 
 	void Source::LoadFromFile(const std::string& filename)
