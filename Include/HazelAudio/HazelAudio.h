@@ -3,12 +3,18 @@
 #include <iostream>
 #include <string>
 
-namespace Hazel {
+namespace Hazel::Audio
+{
+	void Init();
+	void Shutdown();
 
-	class AudioSource
+	class Source
 	{
 	public:
-		~AudioSource();
+		Source();
+		~Source();
+
+		void LoadFromFile(const std::string& filename);
 
 		void Play();
 		void Pause();
@@ -27,38 +33,21 @@ namespace Hazel {
 		bool IsStopped() const;
 
 		[[nodiscard]] std::pair<uint32_t, uint32_t> GetLengthMinutesAndSeconds() const;
-		static AudioSource LoadFromFile(const std::string& file, bool spatial = false);
 	private:
-		AudioSource();
-		AudioSource(uint32_t handle, bool loaded, float length);
+		void LoadOgg(const std::string& filename);
+		void LoadMp3(const std::string& filename);
 
-		uint32_t m_BufferHandle = 0;
-		uint32_t m_SourceHandle = 0;
-		bool m_Loaded = false;
-		bool m_Spatial = false;
+		uint32_t m_BufferHandle{};
+		uint32_t m_SourceHandle{};
+		bool m_Loaded{};
+		bool m_Spatial{};
 
-		float m_TotalDuration = 0; // in seconds
-		
+		float m_TotalDuration{}; // in seconds
+
 		// Attributes
-		float m_Position[3] = { 0.0f, 0.0f, 0.0f };
-		float m_Gain = 1.0f;
-		float m_Pitch = 1.0f;
-		bool m_Loop = false;
-
-		friend class Audio;
+		float m_Position[3]{};
+		float m_Gain{ 1.0f };
+		float m_Pitch{ 1.0f };
+		bool m_Loop{};
 	};
-
-	class Audio
-	{
-	public:
-		static void Init();
-		static AudioSource LoadAudioSource(const std::string& filename);
-
-		// TODO: temporary whilst Hazel Audio is in early dev
-		static void SetDebugLogging(bool log);
-	private:
-		static AudioSource LoadAudioSourceOgg(const std::string& filename);
-		static AudioSource LoadAudioSourceMP3(const std::string& filename);
-	};
-
 }

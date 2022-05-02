@@ -10,7 +10,8 @@ int main()
 	// Initialize the audio engine
 	Hazel::Audio::Init();
 	// Load audio source from file
-	auto source = Hazel::AudioSource::LoadFromFile("Assets/BackgroundMusic.mp3", false);
+	Hazel::Audio::Source source;
+	source.LoadFromFile("Assets/BackgroundMusic.mp3");
 	// Make it loop forever
 	source.SetLoop(true);
 	// Play audio source
@@ -29,25 +30,31 @@ int main()
 	// Play audio again. (make gamedev great again haha)
 	source.Play();
 	std::cout << "Is playing: " << source.IsPlaying() << '\n';
-
-	auto frontLeftSource = Hazel::AudioSource::LoadFromFile("Assets/FrontLeft.ogg", true);
+	
+	Hazel::Audio::Source frontLeftSource;
+	frontLeftSource.LoadFromFile("Assets/FrontLeft.ogg");
+	frontLeftSource.SetSpatial(true);
 	frontLeftSource.SetGain(5.0f);
 	frontLeftSource.SetPosition(-5.0f, 0.0f, 5.0f);
 
-	auto frontRightSource = Hazel::AudioSource::LoadFromFile("Assets/FrontRight.ogg", true);
+	Hazel::Audio::Source frontRightSource;
+	frontRightSource.LoadFromFile("Assets/FrontRight.ogg");
+	frontRightSource.SetSpatial(true);
 	frontRightSource.SetGain(5.0f);
 	frontRightSource.SetPosition(5.0f, 0.0f, 5.0f);
 
-	auto movingSource = Hazel::AudioSource::LoadFromFile("Assets/Moving.ogg", true);
+	Hazel::Audio::Source movingSource;
+	movingSource.LoadFromFile("Assets/Moving.ogg");
+	movingSource.SetSpatial(true);
 	movingSource.SetGain(5.0f);
 	movingSource.SetPosition(5.0f, 0.0f, 5.0f);
 
 	int sourceIndex = 0;
-	const int sourceCount = 3;
-	Hazel::AudioSource* sources[] = { &frontLeftSource, &frontRightSource, &movingSource };
+	constexpr int sourceCount = 3;
+	Hazel::Audio::Source* sources[] = { &frontLeftSource, &frontRightSource, &movingSource };
 
 	float xPosition = 5.0f;
-	const float playFrequency = 3.0f; // play sounds every 3 seconds
+	constexpr float playFrequency = 3.0f; // play sounds every 3 seconds
 	float timer = playFrequency;
 	std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now();
 	while (true)

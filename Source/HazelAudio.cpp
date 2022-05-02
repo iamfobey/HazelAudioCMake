@@ -10,21 +10,22 @@
 #include "HazelAudio/alhelpers.h"
 
 #define MINIMP3_IMPLEMENTATION
+#include <cassert>
+
 #include "minimp3.h"
 #include "minimp3_ex.h"
 
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
-namespace Hazel {
+namespace Hazel::Audio
+{
 	static ALCdevice* s_AudioDevice{};
 	static mp3dec_t s_Mp3d;
 
 	static uint8_t* s_AudioScratchBuffer;
 	static uint32_t s_AudioScratchBufferSize = 10 * 1024 * 1024; // 10mb initially
-
-	static bool s_DebugLog = true;
-
+	
 #define HA_LOG(x) std::cout << "[Hazel Audio]  " << x << std::endl
 
 	// Currently supported file formats
@@ -37,7 +38,7 @@ namespace Hazel {
 
 	static AudioFileFormat GetFileFormat(const std::string& filename)
 	{
-		std::filesystem::path path = filename;
+		const std::filesystem::path path = filename;
 		const std::string extension = path.extension().string();
 
 		if (extension == ".ogg")  return AudioFileFormat::Ogg;
@@ -59,7 +60,27 @@ namespace Hazel {
 		return 0;
 	}
 
-	AudioSource Audio::LoadAudioSourceOgg(const std::string& filename)
+	void Audio::Init()
+	{
+		if (InitAL(s_AudioDevice, nullptr, 0) != 0)
+			std::cout << "Audio device error!\n";
+
+		mp3dec_init(&s_Mp3d);
+
+		s_AudioScratchBuffer = new uint8_t[s_AudioScratchBufferSize];
+
+		// Init listener
+		constexpr ALfloat listenerPos[] = { 0.0,0.0,0.0 };
+		constexpr ALfloat listenerVel[] = { 0.0,0.0,0.0 };
+		constexpr ALfloat listenerOri[] = { 0.0, 0.0, -1.0, 0.0, 1.0, 0.0 };
+		alListenerfv(AL_POSITION, listenerPos);
+		alListenerfv(AL_VELOCITY, listenerVel);
+		alListenerfv(AL_ORIENTATION, listenerOri);
+	}
+
+	void Shutdown() { CloseAL(); }
+
+	void Source::LoadOgg(const std::string& filename)
 	{
 		FILE* f = fopen(filename.c_str(), "rb");
 
@@ -71,10 +92,11 @@ namespace Hazel {
 		auto sampleRate = vi->rate;
 		auto channels = vi->channels;
 		auto alFormat = GetOpenALFormat(channels);
-
 		uint64_t samples = ov_pcm_total(&vf, -1);
-		float trackLength = (float)samples / (float)sampleRate; // in seconds
 		uint32_t bufferSize = 2 * channels * samples; // 2 bytes per sample (I'm guessing...)
+
+		m_TotalDuration = static_cast<float>(samples) / static_cast<float>(sampleRate); // in seconds
+		m_Loaded = true;
 
 		// TODO: Replace with Hazel::Buffer
 		if (s_AudioScratchBufferSize < bufferSize)
@@ -90,12 +112,9 @@ namespace Hazel {
 		while (!eof)
 		{
 			int current_section;
-			long length = ov_read(&vf, (char*)bufferPtr, 4096, 0, 2, 1, &current_section);
+			long length = ov_read(&vf, reinterpret_cast<char*>(bufferPtr), 4096, 0, 2, 1, &current_section);
 			bufferPtr += length;
-			if (length == 0)
-			{
-				eof = 1;
-			}
+			if (length == 0) eof = 1;
 			else if (length < 0)
 			{
 				if (length == OV_EBADLINK)
@@ -107,124 +126,85 @@ namespace Hazel {
 		}
 
 		uint32_t size = bufferPtr - oggBuffer;
-		// assert bufferSize == size
-
-		if (s_DebugLog)
-			HA_LOG("  Read " << size << " bytes");
+		assert(bufferSize == size);
 
 		// Release file
 		ov_clear(&vf);
 		fclose(f);
 
-		ALuint buffer;
-		alGenBuffers(1, &buffer);
-		alBufferData(buffer, alFormat, oggBuffer, size, sampleRate);
-		
-		AudioSource result = { buffer, true, trackLength };
-		alGenSources(1, &result.m_SourceHandle);
-		alSourcei(result.m_SourceHandle, AL_BUFFER, buffer);
+		alGenBuffers(1, &m_BufferHandle);
+		alBufferData(m_BufferHandle, alFormat, oggBuffer, size, sampleRate);
+		alGenSources(1, &m_SourceHandle);
+		alSourcei(m_SourceHandle, AL_BUFFER, m_BufferHandle);
 
-		if (alGetError() == AL_NO_ERROR)
+		if (alGetError() != AL_NO_ERROR)
 			HA_LOG("Failed to setup sound source");
-
-		return result;
 	}
 
-	AudioSource Audio::LoadAudioSourceMP3(const std::string& filename)
+	void Source::LoadMp3(const std::string& filename)
 	{
 		mp3dec_file_info_t info;
-		int loadResult = mp3dec_load(&s_Mp3d, filename.c_str(), &info, NULL, NULL);
-		uint32_t size = info.samples * sizeof(mp3d_sample_t);
+		mp3dec_load(&s_Mp3d, filename.c_str(), &info, nullptr, nullptr);
+		const uint32_t size = info.samples * sizeof(mp3d_sample_t);
 
-		auto sampleRate = info.hz;
-		auto channels = info.channels;
-		auto alFormat = GetOpenALFormat(channels);
-		float lengthSeconds = size / (info.avg_bitrate_kbps * 1024.0f);
+		const auto sampleRate = info.hz;
+		const auto channels = info.channels;
+		const auto alFormat = GetOpenALFormat(channels);
+		m_TotalDuration = size / (info.avg_bitrate_kbps * 1024.0f);
+		m_Loaded = true;
 
-		ALuint buffer;
-		alGenBuffers(1, &buffer);
-		alBufferData(buffer, alFormat, info.buffer, size, sampleRate);
-
-		AudioSource result = { buffer, true, lengthSeconds };
-		alGenSources(1, &result.m_SourceHandle);
-		alSourcei(result.m_SourceHandle, AL_BUFFER, buffer);
+		alGenBuffers(1, &m_BufferHandle);
+		alBufferData(m_BufferHandle, alFormat, info.buffer, size, sampleRate);
+		alGenSources(1, &m_SourceHandle);
+		alSourcei(m_SourceHandle, AL_BUFFER, m_BufferHandle);
 		
 		if (alGetError() != AL_NO_ERROR)
 			std::cout << "Failed to setup sound source" << std::endl;
-
-		return result;
 	}
 
-	void Audio::Init()
+
+	Source::Source() = default;
+
+	Source::~Source()
 	{
-		if (InitAL(s_AudioDevice, nullptr, 0) != 0)
-			std::cout << "Audio device error!\n";
-
-		mp3dec_init(&s_Mp3d);
-
-		s_AudioScratchBuffer = new uint8_t[s_AudioScratchBufferSize];
-
-		// Init listener
-		ALfloat listenerPos[] = { 0.0,0.0,0.0 };
-		ALfloat listenerVel[] = { 0.0,0.0,0.0 };
-		ALfloat listenerOri[] = { 0.0,0.0,-1.0, 0.0,1.0,0.0 };
-		alListenerfv(AL_POSITION, listenerPos);
-		alListenerfv(AL_VELOCITY, listenerVel);
-		alListenerfv(AL_ORIENTATION, listenerOri);
+		alDeleteSources(1, &m_SourceHandle);
 	}
 
-	AudioSource Audio::LoadAudioSource(const std::string& filename)
+	void Source::LoadFromFile(const std::string& filename)
 	{
-		auto format = GetFileFormat(filename);
-		switch (format)
+		switch (GetFileFormat(filename))
 		{
-			case AudioFileFormat::Ogg:  return LoadAudioSourceOgg(filename);
-			case AudioFileFormat::MP3:  return LoadAudioSourceMP3(filename);
+			case AudioFileFormat::Ogg:  return LoadOgg(filename);
+			case AudioFileFormat::MP3:  return LoadMp3(filename);
+			case AudioFileFormat::None: break;
 		}
 
-		// Loading failed or unsupported file type
-		return { 0, false, 0 };
 	}
 
-	void Audio::SetDebugLogging(bool log)
-	{
-		s_DebugLog = log;
-	}
+	bool Source::IsLoaded() const { return m_Loaded; }
 
-	AudioSource::AudioSource(uint32_t handle, bool loaded, float length)
-		: m_BufferHandle(handle), m_Loaded(loaded), m_TotalDuration(length)
-	{
-	}
-
-	AudioSource::~AudioSource()
-	{
-		//alDeleteSources(1, &m_SourceHandle);
-	}
-
-	bool AudioSource::IsLoaded() const { return m_Loaded; }
-
-	bool AudioSource::IsPlaying() const
+	bool Source::IsPlaying() const
 	{
 		ALenum state;
 		alGetSourcei(m_SourceHandle, AL_SOURCE_STATE, &state);
 		return state == AL_PLAYING;
 	}
 
-	bool AudioSource::IsPaused() const
+	bool Source::IsPaused() const
 	{
 		ALenum state;
 		alGetSourcei(m_SourceHandle, AL_SOURCE_STATE, &state);
 		return state == AL_PAUSED;
 	}
 
-	bool AudioSource::IsStopped() const
+	bool Source::IsStopped() const
 	{
 		ALenum state;
 		alGetSourcei(m_SourceHandle, AL_SOURCE_STATE, &state);
 		return state == AL_STOPPED;
 	}
 
-	void AudioSource::Play()
+	void Source::Play()
 	{
 		// Play the sound until it finishes
 		alSourcePlay(m_SourceHandle);
@@ -237,20 +217,18 @@ namespace Hazel {
 		// alGetSourcef(audioSource.m_SourceHandle, AL_SEC_OFFSET, &offset);
 	}
 
-	void AudioSource::Pause()
+	void Source::Pause()
 	{
 		alSourcePause(m_SourceHandle);
 	}
 
-	void AudioSource::Stop()
+	void Source::Stop()
 	{
 		alSourceStop(m_SourceHandle);
 	}
 
-	void AudioSource::SetPosition(float x, float y, float z)
+	void Source::SetPosition(float x, float y, float z)
 	{
-		//alSource3f(source, AL_VELOCITY, 0, 0, 0);
-
 		m_Position[0] = x;
 		m_Position[1] = y;
 		m_Position[2] = z;
@@ -258,21 +236,21 @@ namespace Hazel {
 		alSourcefv(m_SourceHandle, AL_POSITION, m_Position);
 	}
 
-	void AudioSource::SetGain(float gain)
+	void Source::SetGain(float gain)
 	{
 		m_Gain = gain;
 
 		alSourcef(m_SourceHandle, AL_GAIN, gain);
 	}
 
-	void AudioSource::SetPitch(float pitch)
+	void Source::SetPitch(float pitch)
 	{
 		m_Pitch = pitch;
 
 		alSourcef(m_SourceHandle, AL_PITCH, pitch);
 	}
 
-	void AudioSource::SetSpatial(bool spatial)
+	void Source::SetSpatial(bool spatial)
 	{
 		m_Spatial = spatial;
 
@@ -280,29 +258,20 @@ namespace Hazel {
 		alDistanceModel(AL_INVERSE_DISTANCE_CLAMPED);
 	}
 
-	void AudioSource::SetLoop(bool loop)
+	void Source::SetLoop(bool loop)
 	{
 		m_Loop = loop;
 
 		alSourcei(m_SourceHandle, AL_LOOPING, loop ? AL_TRUE : AL_FALSE);
 	}
 
-	std::pair<uint32_t, uint32_t> AudioSource::GetLengthMinutesAndSeconds() const
+	std::pair<uint32_t, uint32_t> Source::GetLengthMinutesAndSeconds() const
 	{
-		return { (uint32_t)(m_TotalDuration / 60.0f), (uint32_t)m_TotalDuration % 60 };
+		return { static_cast<uint32_t>(m_TotalDuration / 60.0f), static_cast<uint32_t>(m_TotalDuration) % 60 };
 	}
 
-	void AudioSource::SetVolume(float volume)
+	void Source::SetVolume(float volume)
 	{
 		alSourcef(m_SourceHandle, AL_GAIN, volume);
 	}
-
-	AudioSource AudioSource::LoadFromFile(const std::string& file, bool spatial)
-	{
-		AudioSource result = Audio::LoadAudioSource(file);
-		result.SetSpatial(spatial);
-		return result;
-	}
-
-	AudioSource::AudioSource() {}
 }

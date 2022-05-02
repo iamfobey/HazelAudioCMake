@@ -40,10 +40,8 @@
  * the program ready to call OpenAL functions. */
 int InitAL(ALCdevice*& device, char ***argv, int *argc)
 {
-    ALCcontext *ctx;
-
-    /* Open and initialize a device */
-    device = NULL;
+	/* Open and initialize a device */
+    device = nullptr;
     if(argc && argv && *argc > 1 && strcmp((*argv)[0], "-device") == 0)
     {
         device = alcOpenDevice((*argv)[1]);
@@ -53,17 +51,17 @@ int InitAL(ALCdevice*& device, char ***argv, int *argc)
         (*argc) -= 2;
     }
     if(!device)
-        device = alcOpenDevice(NULL);
+        device = alcOpenDevice(nullptr);
     if(!device)
     {
         fprintf(stderr, "Could not open a device!\n");
         return 1;
     }
 
-    ctx = alcCreateContext(device, NULL);
-    if(ctx == NULL || alcMakeContextCurrent(ctx) == ALC_FALSE)
+    ALCcontext* ctx = alcCreateContext(device, nullptr);
+    if(ctx == nullptr || alcMakeContextCurrent(ctx) == ALC_FALSE)
     {
-        if(ctx != NULL)
+        if(ctx != nullptr)
             alcDestroyContext(ctx);
         alcCloseDevice(device);
         fprintf(stderr, "Could not set a context!\n");
@@ -77,16 +75,13 @@ int InitAL(ALCdevice*& device, char ***argv, int *argc)
  * context. */
 void CloseAL(void)
 {
-    ALCdevice *device;
-    ALCcontext *ctx;
-
-    ctx = alcGetCurrentContext();
-    if(ctx == NULL)
+	ALCcontext* ctx = alcGetCurrentContext();
+    if(ctx == nullptr)
         return;
 
-    device = alcGetContextsDevice(ctx);
+    ALCdevice* device = alcGetContextsDevice(ctx);
 
-    alcMakeContextCurrent(NULL);
+    alcMakeContextCurrent(nullptr);
     alcDestroyContext(ctx);
     alcCloseDevice(device);
 }
@@ -108,20 +103,19 @@ const char *FormatName(ALenum format)
 #ifdef _WIN32
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <Windows.h>
 #include <mmsystem.h>
 
 int altime_get(void)
 {
     static int start_time = 0;
-    int cur_time;
     union {
         FILETIME ftime;
         ULARGE_INTEGER ulint;
     } systime;
     GetSystemTimeAsFileTime(&systime.ftime);
     /* FILETIME is in 100-nanosecond units, or 1/10th of a microsecond. */
-    cur_time = (int)(systime.ulint.QuadPart/10000);
+    const int cur_time = static_cast<int>(systime.ulint.QuadPart / 10000);
 
     if(!start_time)
         start_time = cur_time;
