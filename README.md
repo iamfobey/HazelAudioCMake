@@ -1,12 +1,14 @@
 # Hazel Audio
 
-Hazel Audio is an audio library I wrote for the [Hazel Engine](https://hazelengine.com), built on top of [OpenAL Soft](https://openal-soft.org/). I've never written an audio library before so I figured I'd give it a shot, since I want to have a robust and powerful solution for Hazel.
+Hazel Audio is an audio library which was written for the [Hazel Engine](https://hazelengine.com), built on top of [OpenAL Soft](https://openal-soft.org/). I rewrote Hazel Audio with CMake support and new features for use in [Oneiro Engine](https://github.com/OneiroGames/Oneiro).
 
-This is the first version of the library that was written over a few hours, so there is a lot missing. I'll update this with information about various limitations as I go.
+[Original Repo](https://github.com/TheCherno/HazelAudio)
 
 ## Currently Supports
 - .ogg and .mp3 files
 - 3D spatial playback of audio sources
+- Control playback
+- Unload audio source
 
 ## TODO
 - Stream audio files
@@ -15,17 +17,31 @@ This is the first version of the library that was written over a few hours, so t
 - Wave file support
 - Effects
 
-## Next version
-I'm focusing on audio file streaming, seeking and unloading.
-
 ## Example
-Check out the `HazelAudio-Examples` project for more, but it's super simple:
+Check out the `Examples` project for more, but it's super simple:
+
+CMakeLists.txt:
+```cmake
+cmake_minimum_required(VERSION 3.18)
+
+project(Hazel.AudioExample)
+
+set(CMAKE_CXX_STANDARD 17)
+
+add_executable(Hazel.AudioExample Source/Main.cpp)
+
+add_subdirectory(path/to/hazelaudio/ out/path/)
+target_link_libraries(Hazel.AudioExample Hazel.Audio)
+```
+
+Main.cpp:
 ```cpp
 // Initialize the audio engine
 Hazel::Audio::Init();
 // Load audio source from file, bool is for whether the source
 // should be in 3D space or not
-auto source = Hazel::AudioSource::LoadFromFile(filename, true);
+Hazel::Audio::Source source;
+source.LoadFromFile(filename, true);
 // Play audio source
 source.Play();
 ```
@@ -35,8 +51,16 @@ source.SetPosition(x, y, z);
 source.SetGain(2.0f);
 source.SetLoop(true);
 ```
+and control playback:
+```cpp
+source.Play();
+source.Pause();
+source.Stop();
+```
 
 ## Acknowledgements
 - [OpenAL Soft](https://openal-soft.org/)
 - [minimp3](https://github.com/lieff/minimp3)
 - [libogg and Vorbis](https://www.xiph.org/)
+
+<h1 align="center">Thank you Yan Chernikov for your content❤️</h1>
