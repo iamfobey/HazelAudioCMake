@@ -1,0 +1,10 @@
+# Binaries
+out
+Examples/out
+
+# Hazel files
+*.log
+
+# Visual Studio files and folder
+.vs/
+CMakePresets.json
