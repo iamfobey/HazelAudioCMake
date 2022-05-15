@@ -28,7 +28,7 @@
  * finding an appropriate buffer format, and getting readable strings for
  * channel configs and sample types. */
 
-#include "HazelAudio/alhelpers.h"
+#include "alhelpers.h"
 
 #include <stdio.h>
 #include <errno.h>

@@ -7,7 +7,7 @@
 #include "al.h"
 #include "alc.h"
 #include "alext.h"
-#include "HazelAudio/alhelpers.h"
+#include "alhelpers.h"
 
 #define MINIMP3_IMPLEMENTATION
 #include <cassert>
@@ -80,7 +80,12 @@ namespace Hazel::Audio
 
 	void Shutdown() { CloseAL(); }
 
-	void Source::LoadOgg(const std::string& filename)
+    void SetGlobalVolume(float volume)
+    {
+        alListenerf(AL_GAIN, volume);
+    }
+
+    void Source::LoadOgg(const std::string& filename)
 	{
 		FILE* f = fopen(filename.c_str(), "rb");
 
@@ -164,6 +169,11 @@ namespace Hazel::Audio
 
 
 	Source::Source() = default;
+
+    Source::Source(const std::string& filename)
+    {
+        LoadFromFile(filename);
+    }
 
 	Source::~Source()
 	{
