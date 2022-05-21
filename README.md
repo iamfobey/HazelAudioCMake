@@ -1,6 +1,6 @@
 # Hazel Audio
 
-Hazel Audio is an audio library which was written for the [Hazel Engine](https://hazelengine.com), built on top of [OpenAL Soft](https://openal-soft.org/). I rewrote Hazel Audio with CMake support and new features for use in [Oneiro Engine](https://github.com/OneiroGames/Oneiro).
+Hazel Audio is an audio library which was written for the [Hazel Engine](https://hazelengine.com), built on top of [OpenAL Soft](https://openal-soft.org/). I rewrote Hazel Audio with CMake support and added new features for using in [Oneiro Engine](https://github.com/OneiroGames/Oneiro).
 
 [Original Repo](https://github.com/TheCherno/HazelAudio)
 
