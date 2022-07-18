@@ -36,6 +36,7 @@ namespace Hazel::Audio
         bool IsStopped() const;
 
         [[nodiscard]] std::pair<uint32_t, uint32_t> GetLengthMinutesAndSeconds() const;
+
     private:
         void LoadOgg(const std::string& filename);
         void LoadMp3(const std::string& filename);
@@ -53,4 +54,4 @@ namespace Hazel::Audio
         float m_Pitch{1.0f};
         bool m_Loop{};
     };
-}
+} // namespace Hazel::Audio
