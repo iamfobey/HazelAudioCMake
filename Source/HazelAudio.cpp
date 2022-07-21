@@ -62,10 +62,10 @@ namespace Hazel::Audio
         return 0;
     }
 
-    void Init()
+    bool Init()
     {
-        if (InitAL(s_AudioDevice, nullptr, 0) != 0)
-            std::cout << "Audio device error!\n";
+        if (InitAL(s_AudioDevice, nullptr, nullptr) != 0)
+            return false;
 
         mp3dec_init(&s_Mp3d);
 
@@ -78,6 +78,8 @@ namespace Hazel::Audio
         alListenerfv(AL_POSITION, listenerPos);
         alListenerfv(AL_VELOCITY, listenerVel);
         alListenerfv(AL_ORIENTATION, listenerOri);
+
+        return true;
     }
 
     void Shutdown()
@@ -90,13 +92,13 @@ namespace Hazel::Audio
         alListenerf(AL_GAIN, volume);
     }
 
-    void Source::LoadOgg(const std::string& filename)
+    bool Source::LoadOgg(const std::string& filename)
     {
         FILE* f = fopen(filename.c_str(), "rb");
 
         OggVorbis_File vf;
         if (ov_open_callbacks(f, &vf, NULL, 0, OV_CALLBACKS_NOCLOSE) < 0)
-            std::cout << "Could not open ogg stream\n";
+            return false;
 
         vorbis_info* vi = ov_info(&vf, -1);
         auto sampleRate = vi->rate;
@@ -105,8 +107,8 @@ namespace Hazel::Audio
         uint64_t samples = ov_pcm_total(&vf, -1);
         uint32_t bufferSize = 2 * channels * samples; // 2 bytes per sample (I'm guessing...)
 
-        m_TotalDuration = static_cast<float>(samples) / static_cast<float>(sampleRate); // in seconds
-        m_Loaded = true;
+        mTotalDuration = static_cast<float>(samples) / static_cast<float>(sampleRate); // in seconds
+        mLoaded = true;
 
         // TODO: Replace with Hazel::Buffer
         if (s_AudioScratchBufferSize < bufferSize)
@@ -143,34 +145,36 @@ namespace Hazel::Audio
         ov_clear(&vf);
         fclose(f);
 
-        alGenBuffers(1, &m_BufferHandle);
-        alBufferData(m_BufferHandle, alFormat, oggBuffer, size, sampleRate);
-        alGenSources(1, &m_SourceHandle);
-        alSourcei(m_SourceHandle, AL_BUFFER, m_BufferHandle);
+        alGenBuffers(1, &mBufferHandle);
+        alBufferData(mBufferHandle, alFormat, oggBuffer, size, sampleRate);
+        alGenSources(1, &mSourceHandle);
+        alSourcei(mSourceHandle, AL_BUFFER, mBufferHandle);
 
         if (alGetError() != AL_NO_ERROR)
-            HA_LOG("Failed to setup sound source");
+            return false;
+        return true;
     }
 
-    void Source::LoadMp3(const std::string& filename)
+    bool Source::LoadMp3(const std::string& filename)
     {
         mp3dec_file_info_t info;
         mp3dec_load(&s_Mp3d, filename.c_str(), &info, nullptr, nullptr);
-        const uint32_t size = info.samples * sizeof(mp3d_sample_t);
+        const auto size = info.samples * sizeof(mp3d_sample_t);
 
         const auto sampleRate = info.hz;
         const auto channels = info.channels;
         const auto alFormat = GetOpenALFormat(channels);
-        m_TotalDuration = size / (info.avg_bitrate_kbps * 1024.0f);
-        m_Loaded = true;
+        mTotalDuration = size / (info.avg_bitrate_kbps * 1024.0f);
+        mLoaded = true;
 
-        alGenBuffers(1, &m_BufferHandle);
-        alBufferData(m_BufferHandle, alFormat, info.buffer, size, sampleRate);
-        alGenSources(1, &m_SourceHandle);
-        alSourcei(m_SourceHandle, AL_BUFFER, m_BufferHandle);
+        alGenBuffers(1, &mBufferHandle);
+        alBufferData(mBufferHandle, alFormat, info.buffer, size, sampleRate);
+        alGenSources(1, &mSourceHandle);
+        alSourcei(mSourceHandle, AL_BUFFER, mBufferHandle);
 
         if (alGetError() != AL_NO_ERROR)
-            std::cout << "Failed to setup sound source" << std::endl;
+            return false;
+        return true;
     }
 
     Source::Source() = default;
@@ -182,114 +186,109 @@ namespace Hazel::Audio
 
     Source::~Source()
     {
-        alDeleteSources(1, &m_SourceHandle);
-        alDeleteBuffers(1, &m_BufferHandle);
+        alDeleteSources(1, &mSourceHandle);
+        alDeleteBuffers(1, &mBufferHandle);
     }
 
-    void Source::LoadFromFile(const std::string& filename)
+    bool Source::LoadFromFile(const std::string& filename)
     {
         switch (GetFileFormat(filename))
         {
         case AudioFileFormat::Ogg: return LoadOgg(filename);
         case AudioFileFormat::MP3: return LoadMp3(filename);
-        case AudioFileFormat::None: break;
+        case AudioFileFormat::None: return true;
         }
     }
 
     bool Source::IsLoaded() const
     {
-        return m_Loaded;
+        return mLoaded;
     }
 
     bool Source::IsPlaying() const
     {
         ALenum state;
-        alGetSourcei(m_SourceHandle, AL_SOURCE_STATE, &state);
+        alGetSourcei(mSourceHandle, AL_SOURCE_STATE, &state);
         return state == AL_PLAYING;
     }
 
     bool Source::IsPaused() const
     {
         ALenum state;
-        alGetSourcei(m_SourceHandle, AL_SOURCE_STATE, &state);
+        alGetSourcei(mSourceHandle, AL_SOURCE_STATE, &state);
         return state == AL_PAUSED;
     }
 
     bool Source::IsStopped() const
     {
         ALenum state;
-        alGetSourcei(m_SourceHandle, AL_SOURCE_STATE, &state);
+        alGetSourcei(mSourceHandle, AL_SOURCE_STATE, &state);
         return state == AL_STOPPED;
     }
 
-    void Source::Play()
+    void Source::Play() const
     {
         // Play the sound until it finishes
-        alSourcePlay(m_SourceHandle);
+        alSourcePlay(mSourceHandle);
 
         // TODO: current playback time and playback finished callback
-        // eg.
-        // ALfloat offset;
-        // alGetSourcei(audioSource.m_SourceHandle, AL_SOURCE_STATE, &s_PlayState);
-        // ALenum s_PlayState;
-        // alGetSourcef(audioSource.m_SourceHandle, AL_SEC_OFFSET, &offset);
     }
 
-    void Source::Pause()
+    void Source::Pause() const
     {
-        alSourcePause(m_SourceHandle);
+        alSourcePause(mSourceHandle);
     }
 
-    void Source::Stop()
+    void Source::Stop() const
     {
-        alSourceStop(m_SourceHandle);
+        alSourceStop(mSourceHandle);
     }
 
     void Source::SetPosition(float x, float y, float z)
     {
-        m_Position[0] = x;
-        m_Position[1] = y;
-        m_Position[2] = z;
+        mPosition[0] = x;
+        mPosition[1] = y;
+        mPosition[2] = z;
 
-        alSourcefv(m_SourceHandle, AL_POSITION, m_Position);
+        alSourcefv(mSourceHandle, AL_POSITION, mPosition);
     }
 
     void Source::SetGain(float gain)
     {
-        m_Gain = gain;
+        mGain = gain;
 
-        alSourcef(m_SourceHandle, AL_GAIN, gain);
+        alSourcef(mSourceHandle, AL_GAIN, gain);
     }
 
     void Source::SetPitch(float pitch)
     {
-        m_Pitch = pitch;
+        mPitch = pitch;
 
-        alSourcef(m_SourceHandle, AL_PITCH, pitch);
+        alSourcef(mSourceHandle, AL_PITCH, pitch);
     }
 
     void Source::SetSpatial(bool spatial)
     {
-        m_Spatial = spatial;
+        mSpatial = spatial;
 
-        alSourcei(m_SourceHandle, AL_SOURCE_SPATIALIZE_SOFT, spatial ? AL_TRUE : AL_FALSE);
+        alSourcei(mSourceHandle, AL_SOURCE_SPATIALIZE_SOFT, spatial ? AL_TRUE : AL_FALSE);
         alDistanceModel(AL_INVERSE_DISTANCE_CLAMPED);
     }
 
     void Source::SetLoop(bool loop)
     {
-        m_Loop = loop;
+        mLoop = loop;
 
-        alSourcei(m_SourceHandle, AL_LOOPING, loop ? AL_TRUE : AL_FALSE);
+        alSourcei(mSourceHandle, AL_LOOPING, loop ? AL_TRUE : AL_FALSE);
     }
 
     std::pair<uint32_t, uint32_t> Source::GetLengthMinutesAndSeconds() const
     {
-        return {static_cast<uint32_t>(m_TotalDuration / 60.0f), static_cast<uint32_t>(m_TotalDuration) % 60};
+        return {static_cast<uint32_t>(mTotalDuration / 60.0f), static_cast<uint32_t>(mTotalDuration) % 60};
     }
 
     void Source::SetVolume(float volume)
     {
-        alSourcef(m_SourceHandle, AL_GAIN, volume);
+        alSourcef(mSourceHandle, AL_GAIN, volume);
     }
 } // namespace Hazel::Audio
