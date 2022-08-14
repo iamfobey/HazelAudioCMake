@@ -8,10 +8,22 @@ int main()
 {
     using namespace std::literals::chrono_literals;
     // Initialize the audio engine
-    Hazel::Audio::Init();
+    Hazel::Audio::PreInit();
     // Load audio source from file
     Hazel::Audio::Source source;
     source.LoadFromFile("Assets/BackgroundMusic.mp3");
+
+    Hazel::Audio::Source frontLeftSource;
+    frontLeftSource.LoadFromFile("Assets/FrontLeft.ogg");
+
+    Hazel::Audio::Source frontRightSource;
+    frontRightSource.LoadFromFile("Assets/FrontRight.ogg");
+
+    Hazel::Audio::Source movingSource;
+    movingSource.LoadFromFile("Assets/Moving.ogg");
+
+    Hazel::Audio::Init();
+
     // Make it loop forever
     source.SetLoop(true);
     // Play audio source
@@ -31,20 +43,14 @@ int main()
     source.Play();
     std::cout << "Is playing: " << source.IsPlaying() << '\n';
 
-    Hazel::Audio::Source frontLeftSource;
-    frontLeftSource.LoadFromFile("Assets/FrontLeft.ogg");
     frontLeftSource.SetSpatial(true);
     frontLeftSource.SetGain(5.0f);
     frontLeftSource.SetPosition(-5.0f, 0.0f, 5.0f);
 
-    Hazel::Audio::Source frontRightSource;
-    frontRightSource.LoadFromFile("Assets/FrontRight.ogg");
     frontRightSource.SetSpatial(true);
     frontRightSource.SetGain(5.0f);
     frontRightSource.SetPosition(5.0f, 0.0f, 5.0f);
 
-    Hazel::Audio::Source movingSource;
-    movingSource.LoadFromFile("Assets/Moving.ogg");
     movingSource.SetSpatial(true);
     movingSource.SetGain(5.0f);
     movingSource.SetPosition(5.0f, 0.0f, 5.0f);
