@@ -91,8 +91,9 @@ namespace Hazel::Audio
                     FILE* f = fopen(audioSource.first.c_str(), "rb");
 
                     OggVorbis_File vf;
-                    if (ov_open_callbacks(f, &vf, nullptr, 0, OV_CALLBACKS_NOCLOSE) < 0)
-                        return;
+                    if (ov_open_callbacks(f, &vf, nullptr, 0, OV_CALLBACKS_NOCLOSE) < 0) {
+                        throw std::runtime_error("Ogg Error in " + audioSource.first + " file!");
+                    }
 
                     const vorbis_info* vi = ov_info(&vf, -1);
                     audioSource.second->mSampleRate = vi->rate;
@@ -133,8 +134,10 @@ namespace Hazel::Audio
                     alSourcei(audioSource.second->mSourceHandle, AL_BUFFER, audioSource.second->mBufferHandle);
 
                     if (alGetError() != AL_NO_ERROR)
-                        return;
-                    break;
+                    {
+                        throw std::runtime_error("OpenAL Error: [" + std::to_string(alGetError()) + "] in " + audioSource.first + " file!");
+                    }
+                    return;
                 }
                 case AudioFileFormat::MP3:
                 {
@@ -148,9 +151,9 @@ namespace Hazel::Audio
                     audioSource.second->mAlFormat = GetOpenALFormat(audioSource.second->mChannels);
                     audioSource.second->mTotalDuration = audioSource.second->mSize / (info.avg_bitrate_kbps * 1024.0f);
                     audioSource.second->mLoaded = true;
-                    break;
+                    return;
                 }
-                case AudioFileFormat::None: break;
+                case AudioFileFormat::None: return;
                 }
             }));
         }
@@ -161,9 +164,6 @@ namespace Hazel::Audio
             futures[i].wait();
             switch (GetFileFormat(audioSource.first))
             {
-            case AudioFileFormat::Ogg:
-            {
-            }
             case AudioFileFormat::MP3:
             {
                 alGenBuffers(1, &audioSource.second->mBufferHandle);
@@ -171,10 +171,11 @@ namespace Hazel::Audio
                 alGenSources(1, &audioSource.second->mSourceHandle);
                 alSourcei(audioSource.second->mSourceHandle, AL_BUFFER, audioSource.second->mBufferHandle);
 
-                if (alGetError() != AL_NO_ERROR)
-                    return false;
+                if (alGetError() != AL_NO_ERROR) {
+                    throw std::runtime_error("OpenAL Error: [" + std::to_string(alGetError()) + "] in " + audioSource.first + " file!");
+                }
             }
-            case AudioFileFormat::None: return false;
+            default: break;
             }
         }
 

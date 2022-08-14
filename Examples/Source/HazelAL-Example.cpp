@@ -7,7 +7,7 @@
 int main()
 {
     using namespace std::literals::chrono_literals;
-    // Initialize the audio engine
+    // Pre-Initialize the audio engine
     Hazel::Audio::PreInit();
     // Load audio source from file
     Hazel::Audio::Source source;
@@ -22,6 +22,7 @@ int main()
     Hazel::Audio::Source movingSource;
     movingSource.LoadFromFile("Assets/Moving.ogg");
 
+    // Initialize the audio engine (async loading audio sources)
     Hazel::Audio::Init();
 
     // Make it loop forever
