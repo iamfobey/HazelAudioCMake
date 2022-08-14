@@ -8,3 +8,7 @@ Examples/out
 # Visual Studio files and folder
 .vs/
 CMakePresets.json
+
+.idea/
+.git/
+cmake-build-*/
