@@ -39,11 +39,9 @@ namespace Hazel::Audio
         [[nodiscard]] bool IsPaused() const;
         [[nodiscard]] bool IsStopped() const;
 
-        [[nodiscard]] std::pair<uint32_t, uint32_t> GetLengthMinutesAndSeconds() const;
+        [[maybe_unused]] [[nodiscard]] std::pair<uint32_t, uint32_t> GetLengthMinutesAndSeconds() const;
 
     private:
-        bool LoadOgg(const std::string& filename);
-
         friend bool Hazel::Audio::Init();
 
         uint32_t mBufferHandle{};

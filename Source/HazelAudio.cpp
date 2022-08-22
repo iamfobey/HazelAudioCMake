@@ -133,10 +133,13 @@ namespace Hazel::Audio
                     alGenSources(1, &audioSource.second->mSourceHandle);
                     alSourcei(audioSource.second->mSourceHandle, AL_BUFFER, audioSource.second->mBufferHandle);
 
+                    delete[] audioSource.second->mOggBuffer;
+                    fclose(f);
+                    delete[] vi;
+
                     if (alGetError() != AL_NO_ERROR)
-                    {
                         throw std::runtime_error("OpenAL Error: [" + std::to_string(alGetError()) + "] in " + audioSource.first + " file!");
-                    }
+
                     return;
                 }
                 case AudioFileFormat::MP3:
@@ -153,7 +156,7 @@ namespace Hazel::Audio
                     audioSource.second->mLoaded = true;
                     return;
                 }
-                case AudioFileFormat::None: return;
+                default: return;
                 }
             }));
         }
@@ -174,12 +177,15 @@ namespace Hazel::Audio
                 if (alGetError() != AL_NO_ERROR) {
                     throw std::runtime_error("OpenAL Error: [" + std::to_string(alGetError()) + "] in " + audioSource.first + " file!");
                 }
+
+                delete audioSource.second->mMp3Buffer;
             }
             default: break;
             }
         }
 
         futures.clear();
+        s_AudioSources.clear();
 
         return true;
     }
@@ -295,7 +301,7 @@ namespace Hazel::Audio
         alSourcei(mSourceHandle, AL_LOOPING, loop ? AL_TRUE : AL_FALSE);
     }
 
-    std::pair<uint32_t, uint32_t> Source::GetLengthMinutesAndSeconds() const
+    [[maybe_unused]] std::pair<uint32_t, uint32_t> Source::GetLengthMinutesAndSeconds() const
     {
         return {static_cast<uint32_t>(mTotalDuration / 60.0f), static_cast<uint32_t>(mTotalDuration) % 60};
     }
