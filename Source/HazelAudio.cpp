@@ -56,7 +56,7 @@ namespace Hazel::Audio
         {
         case 1: return AL_FORMAT_MONO16;
         case 2: return AL_FORMAT_STEREO16;
-        default: assert(false);
+        default: assert(false); return {};
         }
     }
 
