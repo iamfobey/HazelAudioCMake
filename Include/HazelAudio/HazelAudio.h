@@ -1,12 +1,12 @@
 #pragma once
 
+#pragma once
+
 #include <iostream>
-#include <minimp3_ex.h>
 #include <string>
 
 namespace Hazel::Audio
 {
-    bool PreInit();
     bool Init();
     void Shutdown();
 
@@ -39,23 +39,16 @@ namespace Hazel::Audio
         [[nodiscard]] bool IsPaused() const;
         [[nodiscard]] bool IsStopped() const;
 
-        [[maybe_unused]] [[nodiscard]] std::pair<uint32_t, uint32_t> GetLengthMinutesAndSeconds() const;
+        [[nodiscard]] std::pair<uint32_t, uint32_t> GetLengthMinutesAndSeconds() const;
 
     private:
-        friend bool Hazel::Audio::Init();
+        bool LoadOgg(const std::string& filename);
+        bool LoadMp3(const std::string& filename);
 
         uint32_t mBufferHandle{};
         uint32_t mSourceHandle{};
         bool mLoaded{};
         bool mSpatial{};
-
-        unsigned long mSize{};
-        int mSampleRate{};
-        int mChannels{};
-        int mAlFormat{};
-
-        mp3d_sample_t* mMp3Buffer{};
-        uint8_t* mOggBuffer{};
 
         float mTotalDuration{}; // in seconds
 

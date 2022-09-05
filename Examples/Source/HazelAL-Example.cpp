@@ -7,8 +7,10 @@
 int main()
 {
     using namespace std::literals::chrono_literals;
-    // Pre-Initialize the audio engine
-    Hazel::Audio::PreInit();
+
+    // Initialize the audio engine
+    Hazel::Audio::Init();
+
     // Load audio source from file
     Hazel::Audio::Source source;
     source.LoadFromFile("Assets/BackgroundMusic.mp3");
@@ -21,9 +23,6 @@ int main()
 
     Hazel::Audio::Source movingSource;
     movingSource.LoadFromFile("Assets/Moving.ogg");
-
-    // Initialize the audio engine (async loading audio sources)
-    Hazel::Audio::Init();
 
     // Make it loop forever
     source.SetLoop(true);
@@ -56,13 +55,13 @@ int main()
     movingSource.SetGain(5.0f);
     movingSource.SetPosition(5.0f, 0.0f, 5.0f);
 
-    int sourceIndex = 0;
-    constexpr int sourceCount = 3;
+    int sourceIndex{};
+    constexpr int sourceCount{3};
     Hazel::Audio::Source* sources[] = {&frontLeftSource, &frontRightSource, &movingSource};
 
-    float xPosition = 5.0f;
-    constexpr float playFrequency = 3.0f; // play sounds every 3 seconds
-    float timer = playFrequency;
+    auto xPosition{5.0f};
+    constexpr float playFrequency{3.0f}; // play sounds every 3 seconds
+    auto timer = playFrequency;
     std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now();
     while (true)
     {
@@ -93,4 +92,6 @@ int main()
         using namespace std::literals::chrono_literals;
         std::this_thread::sleep_for(5ms);
     }
+
+    Hazel::Audio::Shutdown();
 }
