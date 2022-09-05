@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <string>
-#include <thread>
 #include <cassert>
 
 #include "al.h"
